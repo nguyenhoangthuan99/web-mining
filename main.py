@@ -135,13 +135,18 @@ def rebuild(a):
     for u,v in a.items():
         b[int(u)] = v
     return b
+def rebuild_list(a):
+    res = []
+    for i in a:
+        res.append(int(i))
+    return res
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
     parser.add_argument('--batch_size', type=int, default=2048+1024, metavar='N', help='input batch size for training')
     parser.add_argument('--embed_dim', type=int, default=256, metavar='N', help='embedding size')
     parser.add_argument('--phase', type=str, default="test", metavar='N', help='test phase')
-    parser.add_argument('--dataset', type=str, default="60", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
+    parser.add_argument('--dataset', type=str, default="100k", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
     parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', help='input batch size for testing')
     parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train')
@@ -154,44 +159,41 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     embed_dim = args.embed_dim
-    dir_data = './data/toy_dataset'
+    if args.dataset == "100k":
+        data = json.load(open("data/100k/train_100k.json","r"))
+        train_u = rebuild_list(data["users"])
+        train_v = rebuild_list(data["items"])
+        train_r = rebuild_list(data["rating"])
+        data = json.load(open("data/100k/test_100k.json","r"))
+        test_u = rebuild_list(data["users"])
+        test_v = rebuild_list(data["items"])
+        test_r = rebuild_list(data["rating"])
+        user_cluster = rebuild(json.load(open("data/100k/user_cluster_100k.json","r")))
+        user_neighbor = rebuild(json.load(open("data/100k/user_neighbor_100k.json","r")))
+        movie_cluster = rebuild(json.load(open("data/100k/movie_cluster_100k.json","r")))
+        movie_neighbor = rebuild(json.load(open("data/100k/movie_neighbor_100k.json","r")))
 
-    path_data = dir_data + ".pickle"
-    data_file = open(path_data, 'rb')
-    history_u_lists, history_ur_lists, history_v_lists, history_vr_lists, train_u, train_v, train_r, test_u, test_v, test_r, social_adj_lists, ratings_list = pickle.load(
-        data_file)
-    
-    if args.dataset == "80":
-        item_split = 'history_item_split.json'
-        user_split = 'history_user_split.json'
-        model_checkpoint = "checkpoint/checkpoint_256.pth"
-    elif args.dataset == "60":
-        item_split = 'history_item_split2.json'
-        user_split = 'history_user_split2.json'
-        model_checkpoint = "checkpoint/checkpoint_256_60.pth"
-    social_adj_lists = {i:{} for i in range(36000)}
-    ratings_list = {1.0:0,2.0:1, 3.0:2,4.0:3,5.0:4}
-    
-    with open(item_split, 'r') as fp:
-        history_item = json.load(fp)
-    with open(user_split, 'r') as fp:
-        history_user = json.load(fp)
-    with open('dataset_split.json', 'r') as fp:
-        dataset = json.load(fp)
-    
-    history_u_lists, history_ur_lists = rebuild(history_user["user_item"]),rebuild(history_user["user_rating"])
-    history_v_lists, history_vr_lists = rebuild(history_item["item_user"]),rebuild(history_item["item_rating"])
-    train_u, train_v, train_r = dataset[args.dataset]["train"]["user"],dataset[args.dataset]["train"]["item"],dataset[args.dataset]["train"]["rate"]
-    test_u, test_v, test_r = dataset[args.dataset]["test"]["user"],dataset[args.dataset]["test"]["item"],dataset[args.dataset]["test"]["rate"]
-    mean = np.mean(test_r)
-    
+
+    elif args.dataset == "1m":
+        data = json.load(open("data/1m/train_1m.json","r"))
+        train_u = rebuild_list(data["users"])
+        train_v = rebuild_list(data["items"])
+        train_r = rebuild_list(data["rating"])
+        data = json.load(open("data/1m/test_1m.json","r"))
+        test_u = rebuild_list(data["users"])
+        test_v = rebuild_list(data["items"])
+        test_r = rebuild_list(data["rating"])
+        user_cluster = rebuild(json.load(open("data/1m/user_cluster_1m.json","r")))
+        user_neighbor = rebuild(json.load(open("data/1m/user_neighbor_1m.json","r")))
+        movie_cluster = rebuild(json.load(open("data/1m/movie_cluster_1m.json","r")))
+        movie_neighbor = rebuild(json.load(open("data/1m/movie_neighbor_1m.json","r")))
+
     print("predict mean rmse", np.mean(np.abs(test_r -mean)**2)**0.5)
     print("predict mean mae", np.mean(np.abs(test_r -mean)))
     print(len(train_u),len(test_v),len(test_r))
     res = []
-    for i in range(len(test_r)):
-        res.append(np.mean(history_ur_lists[int(test_u[i])] ) )
-    print("user avg ",np.mean(np.abs(np.array(test_r)- np.array(res))**2)**0.5)
+    
+    #print("user avg ",np.mean(np.abs(np.array(test_r)- np.array(res))**2)**0.5)
     
     trainset = torch.utils.data.TensorDataset(torch.LongTensor(train_u), torch.LongTensor(train_v),
                                               torch.FloatTensor(train_r))
@@ -199,29 +201,31 @@ def main():
                                              torch.FloatTensor(test_r))
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True)
     test_loader = torch.utils.data.DataLoader(testset, batch_size=args.test_batch_size, shuffle=True)
-    num_users = 34388 #history_u_lists.__len__()
-    num_items = history_v_lists.__len__()
-    num_ratings = 7#ratings_list.__len__()
+    num_users = max(train_u)+1 #history_u_lists.__len__()
+    num_items = max(train_v)+1# history_v_lists.__len__()
+    
     print(num_items)
     u2e = nn.Embedding(num_users, embed_dim).to(device)
     v2e = nn.Embedding(num_items, embed_dim).to(device)
-    r2e = nn.Embedding(num_ratings, embed_dim).to(device)
+    u_cluster2e = nn.Embedding(100, embed_dim).to(device)
+    v_cluster2e = nn.Embedding(100, embed_dim).to(device)
+    
 
     # user feature
     # features: item * rating
-    agg_u_history = UV_Aggregator(v2e, r2e, u2e, embed_dim, cuda=device, uv=True)
-    enc_u_history = UV_Encoder(u2e, embed_dim, history_u_lists, history_ur_lists, agg_u_history, cuda=device, uv=True)
+    
     # neighobrs
-    agg_u_social = Social_Aggregator(lambda nodes: enc_u_history(nodes).t(), u2e, embed_dim, cuda=device)
-    enc_u = Social_Encoder(lambda nodes: enc_u_history(nodes).t(), embed_dim, social_adj_lists, agg_u_social,
-                           base_model=enc_u_history, cuda=device)
+    agg_u_social = Social_Aggregator(None, u2e, embed_dim, cuda=device)
+    enc_u = Social_Encoder(u2e, embed_dim, user_neighbor, agg_u_social,
+                           base_model=u_cluster2e, cuda=device)
 
     # item feature: user * rating
-    agg_v_history = UV_Aggregator(v2e, r2e, u2e, embed_dim, cuda=device, uv=False)
-    enc_v_history = UV_Encoder(v2e, embed_dim, history_v_lists, history_vr_lists, agg_v_history, cuda=device, uv=False)
+    agg_v_social = Social_Aggregator(None, v2e, embed_dim, cuda=device)
+    enc_v = Social_Encoder(v2e, embed_dim, movie_neighbor, agg_v_social,
+                           base_model=v_cluster2e, cuda=device)
 
     # model
-    graphrec = GraphRec(enc_u, enc_v_history, r2e).to(device)
+    graphrec = GraphRec(enc_u, enc_v, cluster2e).to(device)
     optimizer = torch.optim.Adam(graphrec.parameters(), lr=args.lr)
 
     graphrec.load_state_dict(torch.load(model_checkpoint), strict=False) #RMSprop , alpha=0.9
