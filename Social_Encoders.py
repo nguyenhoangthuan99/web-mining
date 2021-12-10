@@ -6,7 +6,7 @@ from Attention import Attention
 
 class Social_Encoder(nn.Module):
 
-    def __init__(self, u2e, embed_dim, social_adj_lists, aggregator, base_model=None, cuda="cpu"):
+    def __init__(self, u2e, embed_dim, social_adj_lists, aggregator, base_model=None, cuda="cpu",cluster=None):
         super(Social_Encoder, self).__init__()
 
         self.u2e = u2e
@@ -18,6 +18,7 @@ class Social_Encoder(nn.Module):
         self.device = cuda
         self.linear1 = nn.Linear(3*self.embed_dim, self.embed_dim) # nn.Linear(2 * self.embed_dim, self.embed_dim)  #
         self.dropout = nn.Dropout(p=0.5)
+        self.cluster = cluster
     def forward(self, nodes):
 
         to_neighs = []
@@ -28,7 +29,10 @@ class Social_Encoder(nn.Module):
         #self_feats = self.features(torch.LongTensor(nodes.cpu().numpy())).to(self.device)
         #self_feats = self_feats.t()
         self_feats = self.u2e.weight[nodes]
-        self_cluster = self.base_model.weight[nodes]
+        cluster = []
+        for node in nodes:
+            cluster.append(self.cluster[int(node.cpu().numpy())])
+        self_cluster = self.base_model.weight[cluster]
         # self-connection could be considered.
         combined = torch.cat([self_feats, neigh_feats,self_cluster], dim=1)#self_feats#
         combined = F.relu(self.linear1(combined))

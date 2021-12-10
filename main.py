@@ -143,8 +143,8 @@ def rebuild_list(a):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
-    parser.add_argument('--batch_size', type=int, default=2048+1024, metavar='N', help='input batch size for training')
-    parser.add_argument('--embed_dim', type=int, default=256, metavar='N', help='embedding size')
+    parser.add_argument('--batch_size', type=int, default=2048, metavar='N', help='input batch size for training')
+    parser.add_argument('--embed_dim', type=int, default=128, metavar='N', help='embedding size')
     parser.add_argument('--phase', type=str, default="test", metavar='N', help='test phase')
     parser.add_argument('--dataset', type=str, default="100k", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
@@ -152,7 +152,7 @@ def main():
     parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train')
     args = parser.parse_args()
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     use_cuda = False
     if torch.cuda.is_available():
         use_cuda = True
@@ -187,6 +187,7 @@ def main():
         user_neighbor = rebuild(json.load(open("data/1m/user_neighbor_1m.json","r")))
         movie_cluster = rebuild(json.load(open("data/1m/movie_cluster_1m.json","r")))
         movie_neighbor = rebuild(json.load(open("data/1m/movie_neighbor_1m.json","r")))
+    mean = np.mean(test_r)
 
     print("predict mean rmse", np.mean(np.abs(test_r -mean)**2)**0.5)
     print("predict mean mae", np.mean(np.abs(test_r -mean)))
@@ -217,25 +218,26 @@ def main():
     # neighobrs
     agg_u_social = Social_Aggregator(None, u2e, embed_dim, cuda=device)
     enc_u = Social_Encoder(u2e, embed_dim, user_neighbor, agg_u_social,
-                           base_model=u_cluster2e, cuda=device)
+                           base_model=u_cluster2e, cuda=device,cluster=user_cluster)
 
     # item feature: user * rating
     agg_v_social = Social_Aggregator(None, v2e, embed_dim, cuda=device)
     enc_v = Social_Encoder(v2e, embed_dim, movie_neighbor, agg_v_social,
-                           base_model=v_cluster2e, cuda=device)
+                           base_model=v_cluster2e, cuda=device,cluster=movie_cluster)
 
     # model
-    graphrec = GraphRec(enc_u, enc_v, cluster2e).to(device)
+    graphrec = GraphRec(enc_u, enc_v, u_cluster2e).to(device)
     optimizer = torch.optim.Adam(graphrec.parameters(), lr=args.lr)
-
+    """
     graphrec.load_state_dict(torch.load(model_checkpoint), strict=False) #RMSprop , alpha=0.9
     graphrec.eval()
     expected_rmse, mae = test(graphrec, device, test_loader)
     print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
-    best_rmse = 0.836806 
-    best_mae = 0.542972
-    endure_count = 0
     """
+    best_rmse = 0.0 
+    best_mae = 0.0
+    endure_count = 0
+    
     for epoch in range(1, args.epochs + 1):
 
         train(graphrec, device, train_loader, optimizer, epoch, best_rmse, best_mae)
@@ -257,7 +259,7 @@ def main():
        # torch.save(graphrec.state_dict(), "checkpoint.pth")
         #if endure_count > 5:
         #    break
-    """
+    
 
 if __name__ == "__main__":
     main()
