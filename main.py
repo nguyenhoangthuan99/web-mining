@@ -37,7 +37,8 @@ If you use this code, please cite our paper:
 
 """
 
-
+def fx(x):
+    return x
 class GraphRec(nn.Module):
 
     def __init__(self, enc_u, enc_v_history, r2e):
@@ -51,13 +52,13 @@ class GraphRec(nn.Module):
         self.w_vr1 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_vr2 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_uv1 = nn.Linear(self.embed_dim * 2, self.embed_dim)
-        self.w_uv2 = nn.Linear(self.embed_dim, 16)
-        self.w_uv3 = nn.Linear(16, 1)
+        self.w_uv2 = nn.Linear(self.embed_dim, 64)
+        self.w_uv3 = nn.Linear(64, 1)
         self.r2e = r2e
-        self.bn1 = nn.BatchNorm1d(self.embed_dim, momentum=0.5)
-        self.bn2 = nn.BatchNorm1d(self.embed_dim, momentum=0.5)
-        self.bn3 = nn.BatchNorm1d(self.embed_dim, momentum=0.5)
-        self.bn4 = nn.BatchNorm1d(16, momentum=0.5)
+        self.bn1 = nn.BatchNorm1d(self.embed_dim)
+        self.bn2 = nn.BatchNorm1d(self.embed_dim)
+        self.bn3 = nn.BatchNorm1d(self.embed_dim)
+        self.bn4 = nn.BatchNorm1d(64)
         self.criterion = nn.MSELoss()
         self.dropout = nn.Dropout(p=0.5)
 
@@ -66,7 +67,7 @@ class GraphRec(nn.Module):
         embeds_v = self.enc_v_history(nodes_v)
 
         x_u = F.relu(self.bn1(self.w_ur1(embeds_u)))
-        #x_u = self.dropout(x_u) #F.dropout(x_u, training=self.training)
+        x_u = self.dropout(x_u) #F.dropout(x_u, training=self.training)
         x_u = self.w_ur2(x_u)
         x_v = F.relu(self.bn2(self.w_vr1(embeds_v)))
         x_v = self.dropout(x_v) #F.dropout(x_v, training=self.training)
@@ -77,7 +78,7 @@ class GraphRec(nn.Module):
         #x = self.dropout(x) #F.dropout(x, training=self.training)
         x = F.relu(self.bn4(self.w_uv2(x)))
         x = self.dropout(x) #F.dropout(x, training=self.training)
-        scores = self.w_uv3(x)
+        scores = self.w_uv3(x)*5
         return scores.squeeze()
 
     def loss(self, nodes_u, nodes_v, labels_list):
@@ -144,15 +145,15 @@ def main():
     # Training settings
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
     parser.add_argument('--batch_size', type=int, default=2048, metavar='N', help='input batch size for training')
-    parser.add_argument('--embed_dim', type=int, default=128, metavar='N', help='embedding size')
+    parser.add_argument('--embed_dim', type=int, default=256, metavar='N', help='embedding size')
     parser.add_argument('--phase', type=str, default="test", metavar='N', help='test phase')
-    parser.add_argument('--dataset', type=str, default="100k", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
+    parser.add_argument('--dataset', type=str, default="1m", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
     parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', help='input batch size for testing')
     parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train')
     args = parser.parse_args()
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     use_cuda = False
     if torch.cuda.is_available():
         use_cuda = True
@@ -228,14 +229,14 @@ def main():
     # model
     graphrec = GraphRec(enc_u, enc_v, u_cluster2e).to(device)
     optimizer = torch.optim.Adam(graphrec.parameters(), lr=args.lr)
-    """
-    graphrec.load_state_dict(torch.load(model_checkpoint), strict=False) #RMSprop , alpha=0.9
-    graphrec.eval()
-    expected_rmse, mae = test(graphrec, device, test_loader)
-    print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
-    """
-    best_rmse = 0.0 
-    best_mae = 0.0
+    
+    #graphrec.load_state_dict(torch.load("checkpoint.pth"), strict=False) #RMSprop , alpha=0.9
+    #graphrec.eval()
+    #expected_rmse, mae = test(graphrec, device, test_loader)
+    #print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
+    
+    best_rmse = 9
+    best_mae = 9
     endure_count = 0
     
     for epoch in range(1, args.epochs + 1):
@@ -247,7 +248,7 @@ def main():
         # early stopping (no validation set in toy dataset)
         if best_rmse > expected_rmse:
             best_rmse = expected_rmse
-            torch.save(graphrec.state_dict(), "checkpoint/checkpoint_256.pth")
+            torch.save(graphrec.state_dict(), "checkpoint/checkpoint_256_1m.pth")
             #best_mae = mae
             endure_count = 0
         if best_mae > mae:
@@ -256,7 +257,8 @@ def main():
         else:
             endure_count += 1
         print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
-       # torch.save(graphrec.state_dict(), "checkpoint.pth")
+        print("best rmse: %.4f, mae:%.4f " % (best_rmse, best_mae))
+        torch.save(graphrec.state_dict(), "checkpoint.pth")
         #if endure_count > 5:
         #    break
     

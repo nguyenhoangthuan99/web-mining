@@ -17,7 +17,7 @@ class Social_Encoder(nn.Module):
         self.embed_dim = embed_dim
         self.device = cuda
         self.linear1 = nn.Linear(3*self.embed_dim, self.embed_dim) # nn.Linear(2 * self.embed_dim, self.embed_dim)  #
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=0.3)
         self.cluster = cluster
     def forward(self, nodes):
 
