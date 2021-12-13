@@ -147,13 +147,13 @@ def main():
     parser.add_argument('--batch_size', type=int, default=2048, metavar='N', help='input batch size for training')
     parser.add_argument('--embed_dim', type=int, default=256, metavar='N', help='embedding size')
     parser.add_argument('--phase', type=str, default="test", metavar='N', help='test phase')
-    parser.add_argument('--dataset', type=str, default="1m", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
+    parser.add_argument('--dataset', type=str, default="100k", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
     parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', help='input batch size for testing')
     parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train')
     args = parser.parse_args()
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     use_cuda = False
     if torch.cuda.is_available():
         use_cuda = True
@@ -170,9 +170,9 @@ def main():
         test_v = rebuild_list(data["items"])
         test_r = rebuild_list(data["rating"])
         user_cluster = rebuild(json.load(open("data/100k/user_cluster_100k.json","r")))
-        user_neighbor = rebuild(json.load(open("data/100k/user_neighbor_100k.json","r")))
+        user_neighbor = rebuild(json.load(open("data/100k/user_neighbor_100k_2.json","r")))
         movie_cluster = rebuild(json.load(open("data/100k/movie_cluster_100k.json","r")))
-        movie_neighbor = rebuild(json.load(open("data/100k/movie_neighbor_100k.json","r")))
+        movie_neighbor = rebuild(json.load(open("data/100k/movie_neighbor_100k_2.json","r")))
 
 
     elif args.dataset == "1m":
