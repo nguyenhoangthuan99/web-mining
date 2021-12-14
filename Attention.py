@@ -24,6 +24,7 @@ class Attention(nn.Module):
         #x = F.relu(self.att2(x))
        # x = self.dropout(x) #F.dropout(x, training=self.training)
         x = self.att3(x)
-        att = F.softmax(x, dim=0)
+       # print(x.size())
+        att = F.softmax(x, 0)
         #print(att.size())
         return att

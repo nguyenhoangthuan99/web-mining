@@ -19,7 +19,7 @@ class Social_Aggregator(nn.Module):
         self.u2e = u2e
         self.embed_dim = embed_dim
         self.att = Attention(self.embed_dim)
-        #self.linear1 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.linear1 = nn.Linear(self.embed_dim, self.embed_dim)
     def forward(self, nodes, to_neighs):
         embed_matrix = torch.empty(len(nodes), self.embed_dim, dtype=torch.float).to(self.device)
         for i in range(len(nodes)):

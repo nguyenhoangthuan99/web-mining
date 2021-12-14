@@ -68,10 +68,10 @@ class GraphRec(nn.Module):
 
         x_u = F.relu(self.bn1(self.w_ur1(embeds_u)))
         x_u = self.dropout(x_u) #F.dropout(x_u, training=self.training)
-        x_u = self.w_ur2(x_u)
+        #x_u = self.w_ur2(x_u)
         x_v = F.relu(self.bn2(self.w_vr1(embeds_v)))
         x_v = self.dropout(x_v) #F.dropout(x_v, training=self.training)
-        x_v = self.w_vr2(x_v)
+        #x_v = self.w_vr2(x_v)
 
         x_uv = torch.cat((x_u, x_v), 1)
         x = F.relu(self.bn3(self.w_uv1(x_uv)))
@@ -144,7 +144,7 @@ def rebuild_list(a):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
-    parser.add_argument('--batch_size', type=int, default=2048, metavar='N', help='input batch size for training')
+    parser.add_argument('--batch_size', type=int, default=2048*2, metavar='N', help='input batch size for training')
     parser.add_argument('--embed_dim', type=int, default=256, metavar='N', help='embedding size')
     parser.add_argument('--phase', type=str, default="test", metavar='N', help='test phase')
     parser.add_argument('--dataset', type=str, default="100k", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
@@ -153,7 +153,7 @@ def main():
     parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train')
     args = parser.parse_args()
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     use_cuda = False
     if torch.cuda.is_available():
         use_cuda = True
@@ -180,7 +180,7 @@ def main():
         train_u = rebuild_list(data["users"])
         train_v = rebuild_list(data["items"])
         train_r = rebuild_list(data["rating"])
-        data = json.load(open("data/1m/test_1m.json","r"))
+        data = json.load(open("data/1m/val_1m.json","r"))
         test_u = rebuild_list(data["users"])
         test_v = rebuild_list(data["items"])
         test_r = rebuild_list(data["rating"])
@@ -208,10 +208,14 @@ def main():
     
     print(num_items)
     u2e = nn.Embedding(num_users, embed_dim).to(device)
+    u2e.weight.data.uniform_(-0.1, 0.1)
     v2e = nn.Embedding(num_items, embed_dim).to(device)
+    v2e.weight.data.uniform_(-0.1, 0.1)
+   # v2e = nn.Embedding(num_items, embed_dim).to(device)
     u_cluster2e = nn.Embedding(100, embed_dim).to(device)
+    u_cluster2e.weight.data.uniform_(-0.1, 0.1)
     v_cluster2e = nn.Embedding(100, embed_dim).to(device)
-    
+    v_cluster2e.weight.data.uniform_(-0.1, 0.1)
 
     # user feature
     # features: item * rating
@@ -230,8 +234,9 @@ def main():
     graphrec = GraphRec(enc_u, enc_v, u_cluster2e).to(device)
     optimizer = torch.optim.Adam(graphrec.parameters(), lr=args.lr)
     
+
     graphrec.load_state_dict(torch.load("checkpoint.pth"), strict=False) #RMSprop , alpha=0.9
-    #graphrec.eval()
+
     expected_rmse, mae = test(graphrec, device, test_loader)
     print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
     
@@ -248,7 +253,7 @@ def main():
         # early stopping (no validation set in toy dataset)
         if best_rmse > expected_rmse:
             best_rmse = expected_rmse
-            torch.save(graphrec.state_dict(), "checkpoint/checkpoint_256_1m.pth")
+            torch.save(graphrec.state_dict(), "checkpoint/checkpoint_256_100k_graph1.pth")
             #best_mae = mae
             endure_count = 0
         if best_mae > mae:
@@ -266,9 +271,12 @@ def main():
 if __name__ == "__main__":
     main()
 
-## 80-20 rmse: 0.8252, mae:0.5281
-## 60-40 rmse: 0.8668, mae:0.5625
+## 100k
+## graph 2 0.93
+## graph 1 
 
+
+## 1m
 ### item graph test
 ## 80-20 rmse: 0.8180, mae:0.5114
 ## 60-40 rmse: 0.8545, mae:0.5051 
