@@ -230,10 +230,10 @@ def main():
     graphrec = GraphRec(enc_u, enc_v, u_cluster2e).to(device)
     optimizer = torch.optim.Adam(graphrec.parameters(), lr=args.lr)
     
-    #graphrec.load_state_dict(torch.load("checkpoint.pth"), strict=False) #RMSprop , alpha=0.9
+    graphrec.load_state_dict(torch.load("checkpoint.pth"), strict=False) #RMSprop , alpha=0.9
     #graphrec.eval()
-    #expected_rmse, mae = test(graphrec, device, test_loader)
-    #print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
+    expected_rmse, mae = test(graphrec, device, test_loader)
+    print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
     
     best_rmse = 9
     best_mae = 9
