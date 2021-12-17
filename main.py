@@ -52,15 +52,15 @@ class GraphRec(nn.Module):
         self.w_vr1 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_vr2 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_uv1 = nn.Linear(self.embed_dim * 2, self.embed_dim)
-        self.w_uv2 = nn.Linear(self.embed_dim, 64)
-        self.w_uv3 = nn.Linear(64, 1)
+        self.w_uv2 = nn.Linear(self.embed_dim, 256)
+        self.w_uv3 = nn.Linear(256, 1)
         self.r2e = r2e
         self.bn1 = nn.BatchNorm1d(self.embed_dim)
         self.bn2 = nn.BatchNorm1d(self.embed_dim)
         self.bn3 = nn.BatchNorm1d(self.embed_dim)
-        self.bn4 = nn.BatchNorm1d(64)
+        self.bn4 = nn.BatchNorm1d(256)
         self.criterion = nn.MSELoss()
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=0.0)
 
     def forward(self, nodes_u, nodes_v):
         embeds_u = self.enc_u(nodes_u)
@@ -68,10 +68,10 @@ class GraphRec(nn.Module):
 
         x_u = F.relu(self.bn1(self.w_ur1(embeds_u)))
         x_u = self.dropout(x_u) #F.dropout(x_u, training=self.training)
-        #x_u = self.w_ur2(x_u)
+       # x_u = self.w_ur2(x_u) # comment if old
         x_v = F.relu(self.bn2(self.w_vr1(embeds_v)))
         x_v = self.dropout(x_v) #F.dropout(x_v, training=self.training)
-        #x_v = self.w_vr2(x_v)
+       # x_v = self.w_vr2(x_v) # comment if old
 
         x_uv = torch.cat((x_u, x_v), 1)
         x = F.relu(self.bn3(self.w_uv1(x_uv)))
@@ -144,10 +144,10 @@ def rebuild_list(a):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
-    parser.add_argument('--batch_size', type=int, default=2048*2, metavar='N', help='input batch size for training')
+    parser.add_argument('--batch_size', type=int, default=2048*10, metavar='N', help='input batch size for training')
     parser.add_argument('--embed_dim', type=int, default=256, metavar='N', help='embedding size')
     parser.add_argument('--phase', type=str, default="test", metavar='N', help='test phase')
-    parser.add_argument('--dataset', type=str, default="100k", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
+    parser.add_argument('--dataset', type=str, default="1m", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
     parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', help='input batch size for testing')
     parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train')
@@ -165,7 +165,7 @@ def main():
         train_u = rebuild_list(data["users"])
         train_v = rebuild_list(data["items"])
         train_r = rebuild_list(data["rating"])
-        data = json.load(open("data/100k/test_100k.json","r"))
+        data = json.load(open("data/100k/val_100k.json","r"))
         test_u = rebuild_list(data["users"])
         test_v = rebuild_list(data["items"])
         test_r = rebuild_list(data["rating"])
@@ -180,14 +180,14 @@ def main():
         train_u = rebuild_list(data["users"])
         train_v = rebuild_list(data["items"])
         train_r = rebuild_list(data["rating"])
-        data = json.load(open("data/1m/val_1m.json","r"))
+        data = json.load(open("data/1m/test_1m.json","r"))
         test_u = rebuild_list(data["users"])
         test_v = rebuild_list(data["items"])
         test_r = rebuild_list(data["rating"])
         user_cluster = rebuild(json.load(open("data/1m/user_cluster_1m.json","r")))
-        user_neighbor = rebuild(json.load(open("data/1m/user_neighbor_1m.json","r")))
+        user_neighbor = rebuild(json.load(open("data/1m/user_neighbor_1m_2.json","r")))
         movie_cluster = rebuild(json.load(open("data/1m/movie_cluster_1m.json","r")))
-        movie_neighbor = rebuild(json.load(open("data/1m/movie_neighbor_1m.json","r")))
+        movie_neighbor = rebuild(json.load(open("data/1m/movie_neighbor_1m_2.json","r")))
     mean = np.mean(test_r)
 
     print("predict mean rmse", np.mean(np.abs(test_r -mean)**2)**0.5)
@@ -208,14 +208,14 @@ def main():
     
     print(num_items)
     u2e = nn.Embedding(num_users, embed_dim).to(device)
-    u2e.weight.data.uniform_(-0.1, 0.1)
+    u2e.weight.data.uniform_(-1, 1)
     v2e = nn.Embedding(num_items, embed_dim).to(device)
-    v2e.weight.data.uniform_(-0.1, 0.1)
+    v2e.weight.data.uniform_(-1, 1)
    # v2e = nn.Embedding(num_items, embed_dim).to(device)
     u_cluster2e = nn.Embedding(100, embed_dim).to(device)
-    u_cluster2e.weight.data.uniform_(-0.1, 0.1)
+    u_cluster2e.weight.data.uniform_(-1, 1)
     v_cluster2e = nn.Embedding(100, embed_dim).to(device)
-    v_cluster2e.weight.data.uniform_(-0.1, 0.1)
+    v_cluster2e.weight.data.uniform_(-1, 1)
 
     # user feature
     # features: item * rating
@@ -235,12 +235,12 @@ def main():
     optimizer = torch.optim.Adam(graphrec.parameters(), lr=args.lr)
     
 
-    graphrec.load_state_dict(torch.load("checkpoint.pth"), strict=False) #RMSprop , alpha=0.9
+    graphrec.load_state_dict(torch.load("checkpoint/checkpoint_256_1m_graph1.pth"), strict=False) #RMSprop , alpha=0.9
 
     expected_rmse, mae = test(graphrec, device, test_loader)
     print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
     
-    best_rmse = 9
+    best_rmse = 0.8700
     best_mae = 9
     endure_count = 0
     
@@ -253,7 +253,7 @@ def main():
         # early stopping (no validation set in toy dataset)
         if best_rmse > expected_rmse:
             best_rmse = expected_rmse
-            torch.save(graphrec.state_dict(), "checkpoint/checkpoint_256_100k_graph1.pth")
+            torch.save(graphrec.state_dict(), "checkpoint/checkpoint_256_1m_graph1.pth")
             #best_mae = mae
             endure_count = 0
         if best_mae > mae:
@@ -278,6 +278,4 @@ if __name__ == "__main__":
 
 ## 1m
 ### item graph test
-## 80-20 rmse: 0.8180, mae:0.5114
-## 60-40 rmse: 0.8545, mae:0.5051 
-
+## 0.8598

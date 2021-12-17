@@ -119,7 +119,7 @@ def main():
     # Training settings
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
     parser.add_argument('--batch_size', type=int, default=10000, metavar='N', help='input batch size for training')
-    parser.add_argument('--embed_dim', type=int, default=128, metavar='N', help='embedding size')
+    parser.add_argument('--embed_dim', type=int, default=256, metavar='N', help='embedding size')
     parser.add_argument('--phase', type=str, default="test", metavar='N', help='test phase')
     parser.add_argument('--dataset', type=str, default="100k", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
@@ -246,6 +246,6 @@ if __name__ == "__main__":
 
 ## matrix 256 0.9567
 ## matrix 128 0.9440
+##1m
 
-
-
+# rmse: 0.8714

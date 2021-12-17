@@ -46,13 +46,19 @@ class Matrix(nn.Module):
         self.u2e = u2e
         self.v2e = v2e
         self.embed_dim = embed_dim
-
+        self.w_ur1 = nn.Linear(2*self.embed_dim, self.embed_dim)
+        self.w_ur2 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w_vr1 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.w_vr2 = nn.Linear(self.embed_dim, 1)
         
         self.criterion = nn.MSELoss()
         self.dropout = nn.Dropout(p=0.5)
 
     def forward(self, nodes_u, nodes_v):
-        scores = torch.sum(self.u2e.weight[nodes_u]*self.v2e.weight[nodes_v],dim=-1)
+        f1  = torch.cat([self.u2e.weight[nodes_u],self.v2e.weight[nodes_v]],dim=-1)
+        f1 = self.w_ur1(f1)
+        f1 = self.dropout(f1)
+        scores = self.w_vr2(f1)
         return scores.squeeze()
 
     def loss(self, nodes_u, nodes_v, labels_list):
@@ -118,8 +124,8 @@ def rebuild_list(a):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
-    parser.add_argument('--batch_size', type=int, default=10000, metavar='N', help='input batch size for training')
-    parser.add_argument('--embed_dim', type=int, default=128, metavar='N', help='embedding size')
+    parser.add_argument('--batch_size', type=int, default=2048, metavar='N', help='input batch size for training')
+    parser.add_argument('--embed_dim', type=int, default=256, metavar='N', help='embedding size')
     parser.add_argument('--phase', type=str, default="test", metavar='N', help='test phase')
     parser.add_argument('--dataset', type=str, default="100k", metavar='N', help='80 for 80-10-10 split dataset, 60 for 60-20-20 split dataset')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
@@ -139,7 +145,7 @@ def main():
         train_u = rebuild_list(data["users"])
         train_v = rebuild_list(data["items"])
         train_r = rebuild_list(data["rating"])
-        data = json.load(open("data/100k/test_100k.json","r"))
+        data = json.load(open("data/100k/val_100k.json","r"))
         test_u = rebuild_list(data["users"])
         test_v = rebuild_list(data["items"])
         test_r = rebuild_list(data["rating"])
@@ -154,7 +160,7 @@ def main():
         train_u = rebuild_list(data["users"])
         train_v = rebuild_list(data["items"])
         train_r = rebuild_list(data["rating"])
-        data = json.load(open("data/1m/test_1m.json","r"))
+        data = json.load(open("data/1m/val_1m.json","r"))
         test_u = rebuild_list(data["users"])
         test_v = rebuild_list(data["items"])
         test_r = rebuild_list(data["rating"])
@@ -206,7 +212,7 @@ def main():
     graphrec = Matrix(u2e, v2e, embed_dim).to(device)
     optimizer = torch.optim.Adam(graphrec.parameters(), lr=args.lr)
     
-    graphrec.load_state_dict(torch.load("checkpoint/checkpoint_256_matrix.pth"), strict=False) #RMSprop , alpha=0.9
+    #graphrec.load_state_dict(torch.load("checkpoint/checkpoint_256_matrix.pth"), strict=False) #RMSprop , alpha=0.9
     #graphrec.eval()
     expected_rmse, mae = test(graphrec, device, test_loader)
     print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))

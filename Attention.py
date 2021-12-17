@@ -12,7 +12,7 @@ class Attention(nn.Module):
         self.embed_dim = embedding_dims
         self.bilinear = nn.Bilinear(self.embed_dim, self.embed_dim, 1)
         self.att1 = nn.Linear(self.embed_dim * 2, self.embed_dim)
-       # self.att2 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.att2 = nn.Linear(self.embed_dim, self.embed_dim)
         self.att3 = nn.Linear(self.embed_dim, 1)
         self.softmax = nn.Softmax(0)
         self.dropout = nn.Dropout(p=0.3)
@@ -21,7 +21,7 @@ class Attention(nn.Module):
         x = torch.cat((node1, uv_reps), 1)
         x = F.relu(self.att1(x))
         x = self.dropout(x) #F.dropout(x, training=self.training)
-        #x = F.relu(self.att2(x))
+       # x = F.relu(self.att2(x))
        # x = self.dropout(x) #F.dropout(x, training=self.training)
         x = self.att3(x)
        # print(x.size())
