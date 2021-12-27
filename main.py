@@ -153,7 +153,7 @@ def main():
     parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train')
     args = parser.parse_args()
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     use_cuda = False
     if torch.cuda.is_available():
         use_cuda = True
@@ -240,7 +240,7 @@ def main():
     expected_rmse, mae = test(graphrec, device, test_loader)
     print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
     
-    best_rmse = 0.8700
+    best_rmse = 0.82
     best_mae = 9
     endure_count = 0
     
